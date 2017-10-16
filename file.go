@@ -169,8 +169,7 @@ func string_to_char(dst *C.char, src string) error {
 	return nil
 }
 
-//export init_env_go
-func init_env_go(ctx *cli.Context, env *C.storj_env_t) error {
+func init_env(ctx *cli.Context, env *C.storj_env_t) error {
 	// argv := ctx.Argv().(*uploadT)
 
 	proto := "http"
