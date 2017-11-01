@@ -5,54 +5,26 @@ package main
 #include <assert.h>
 #include <stdio.h>
 
+#include "callbacks.h"
+
 #cgo CFLAGS: -I.
 #cgo LDFLAGS: -L. /usr/local/lib/libstorj.dylib /usr/local/lib/libuv.dylib /usr/local/lib/libjson-c.dylib
 
 #include "../libstorj/src/storj.h"
 
-void check_get_buckets(uv_work_t *work_req, int status)
-{
-    assert(status == 0);
-    get_buckets_request_t *req = work_req->data;
-    assert(req->handle == NULL);
-    assert(json_object_is_type(req->response, json_type_array) == 1);
-
-    struct json_object *bucket = json_object_array_get_idx(req->response, 0);
-    struct json_object* value;
-    int success = json_object_object_get_ex(bucket, "id", &value);
-
-    storj_free_get_buckets_request(req);
-    free(work_req);
-}
-
-void check_list_files(uv_work_t *work_req, int status)
-{
-    assert(status == 0);
-    list_files_request_t *req = work_req->data;
-    assert(req->handle == NULL);
-    assert(req->response != NULL);
-
-    struct json_object *file = json_object_array_get_idx(req->response, 0);
-    struct json_object *value;
-    int success = json_object_object_get_ex(file, "id", &value);
-    assert(success == 1);
-    assert(json_object_is_type(value, json_type_string) == 1);
-
-    const char* id = json_object_get_string(value);
-    assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
-
-    storj_free_list_files_request(req);
-    free(work_req);
-}
-
+extern void create_bucket(uv_work_t *work_req, int status);
+extern void delete_bucket(uv_work_t *work_req, int status); 
 */
 import "C"
 import "unsafe"
-
+import "fmt"
+import "errors"
 import (
 	"github.com/mkideal/cli"
 	// "github.com/stretchr/testify/assert"
 )
+
+type callbackFunc *func(total_buckets C.uint32_t, created *C.char, name *C.char,id *C.char)
 
 var bucketCommand = &cli.Command{
 	Name: "bucket",
@@ -98,7 +70,7 @@ var addCommand = &cli.Command{
 
 type addbucketT struct {
 	cli.Helper
-	Bucket string `cli:"addbkt,adb" usage:"add bucket on Genaro network"`
+	Bucket string `cli:"name,n" usage:"new bucket name on Genaro network"`
 }
 
 type initT struct {
@@ -110,8 +82,40 @@ type initT struct {
 
 func addbucket(ctx *cli.Context) error {
 	argv := ctx.Argv().(*addbucketT)
-	ctx.String("%s: %v", ctx.Path(), jsonIndent(argv))
-	return nil
+	bucket_name := C.CString(argv.Bucket)	
+	Sts := make(chan C.int)
+
+	var env *C.storj_env_t
+		
+	// if err := init_env(&env); err != nil{
+	// 	return errors.New("env is not set properly")
+	// }
+
+	if err := set_env(&env); err != nil{
+		return errors.New("Unlock passphrase is not correct")
+	}	
+
+	if argv.Bucket != "" {
+		fmt.Printf("%v bucket is created \n", argv.Bucket)	
+	}else{
+		return errors.New("bucket name is needed for create bucket");
+	}
+
+	go func(){
+
+
+    	status := C.storj_bridge_create_bucket(env, bucket_name, nil, (C.uv_after_work_cb)(unsafe.Pointer(C.create_bucket)))			
+		
+
+		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
+
+		Sts<-status
+
+	}()
+	
+	<-Sts
+
+	return nil;		
 }
 
 var removeCommand = &cli.Command{
@@ -121,24 +125,44 @@ var removeCommand = &cli.Command{
 	Fn: removebucket,
 }
 
-// var _ = app.Register(removeCommand)
-
-// var _ = app.Register(&cli.Command{
-// 	Name: "removebucket",
-// 	Desc: "Genaro Bucket remove",
-// 	Argv: func() interface{} { return new(removebucketT) },	
-// 	Fn: removebucket,
-// })
-
 type removebucketT struct {
 	cli.Helper
-	Bucket string `cli:"removebkt,rmb" usage:"remove bucket on Genaro network"`
+	Bucket string `cli:"id,i" usage:"remove bucket(id) on Genaro network"`
 }
 
 func removebucket(ctx *cli.Context) error {
 	argv := ctx.Argv().(*removebucketT)
-	ctx.String("%s: %v", ctx.Path(), jsonIndent(argv))
-	return nil
+	bucket_id := C.CString(argv.Bucket) 
+	Sts := make(chan C.int)	
+
+	var env *C.storj_env_t
+		
+	// if err := init_env(&env); err != nil{
+	// 	return errors.New("env is not set properly")
+	// }
+
+	if err := set_env(&env); err != nil{
+		return errors.New("Unlock passphrase is not correct")
+	}	
+
+	go func(){
+
+		status := C.storj_bridge_delete_bucket(env, bucket_id, nil, (C.uv_after_work_cb)(unsafe.Pointer(C.delete_bucket)))			
+		
+		fmt.Printf("start loading \n")
+
+		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
+
+		Sts<-status
+
+	}()
+	
+	<-Sts
+
+	// C.storj_destroy_env(env);
+
+	return nil;	
+
 }
 
 
@@ -164,29 +188,37 @@ type listbucketsT struct {
 }
 
 func listbuckets(ctx *cli.Context) error{
+
 	var env *C.storj_env_t
-	init_env(ctx,env)
+	
+	Sts := make(chan C.int)		
 
-	var handle int
+	// if err := init_env(&env); err != nil{
+	// 	return errors.New("env is not set properly");
+	// }
 
-	status := C.storj_bridge_get_buckets(env, unsafe.Pointer(&handle), (C.uv_after_work_cb)(unsafe.Pointer(C.check_get_buckets)))
+	if err := set_env(&env); err != nil{
+		return errors.New("Unlock passphrase is not correct")
+	}	
 
-	panic(status)
+	go func(){
+		status := C.storj_bridge_get_buckets(env, nil, (C.uv_after_work_cb)(unsafe.Pointer(C.get_buckets_callback)))		
+
+		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
+
+		Sts<-status
+
+	}()
+	
+	<-Sts
 
 	// fmt.Println("%s", env.loop)
 
-	if(C.int(C.uv_run(env.loop,C.UV_RUN_DEFAULT)) != 0){
-		return nil;
-	}
-
-	C.storj_destroy_env(env);
+	// C.storj_destroy_env(env);
 
 	return nil;	
 
 }
-
-//=================================================================================================================
-
 
 var listfileCommand = &cli.Command{
 	Name: "listfiles",
@@ -197,28 +229,42 @@ var listfileCommand = &cli.Command{
 
 type listfilesT struct {
 	cli.Helper
-	List string `cli:"list-buskets" usage:"user Genaro files list"`
+	Bucket string `cli:"id,i" usage:"check files in certain busket id in Genaro"`
 }
 
 func listfiles(ctx *cli.Context) error {
+
+	argv := ctx.Argv().(*listfilesT)
 	var env *C.storj_env_t
-	init_env(ctx,env)
+	
+	Sts := make(chan C.int)
 
-	bucket_id := "368be0816766b28fd5f43af5"
+	// if err := init_env(&env); err != nil{
+	// 	return errors.New("env is not set properly");
+	// }
 
-	var bucket_id_c *C.char
+	if err := set_env(&env); err != nil{
+		return errors.New("Unlock passphrase is not correct")
+	}	
 
-	string_to_char(bucket_id_c, bucket_id)
+	bucket_id := C.CString(argv.Bucket) 
 
-	status := C.storj_bridge_list_files(env, bucket_id_c, nil, (C.uv_after_work_cb)(unsafe.Pointer(C.check_list_files)))
 
-	panic(status)
+	go func(){
 
-	if(C.int(C.uv_run(env.loop,C.UV_RUN_DEFAULT)) != 0){
-		return nil;
-	}
+		defer C.free(unsafe.Pointer(bucket_id))
 
-	C.storj_destroy_env(env);
+		status := C.storj_bridge_list_files(env, bucket_id, nil, (C.uv_after_work_cb)(unsafe.Pointer(C.list_files_callback)))			
+
+
+		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
+
+		Sts<-status
+
+
+	}()
+	
+	<-Sts
 
 	return nil;	
-}
+}		

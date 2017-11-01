@@ -18,6 +18,12 @@ var app = &cli.Command{
 	Fn:   gogo,
 }
 
+
+// 
+// 设置全局变量，使用指针调用，用于initenv
+//
+
+
 type gogoT struct {
 	cli.Helper
 	Version bool `cli:"v,version" usage:"display version"`
@@ -52,18 +58,6 @@ func main() {
 	cli.SetUsageStyle(cli.ManualStyle)
 	//NOTE: You can set any writer implements io.Writer
 	// default writer is os.Stdout
-
-	// root := cli.Root(app,
-	// 		cli.Tree(bucketCommands,
-	// 				 cli.Tree(listCommand),
-	// 				 cli.Tree(addCommand),
-	// 				 cli.Tree(removeCommand)),
-	// 	    cli.Tree(fileCommands,
-	// 	    		 cli.Tree(downloadCommand),
-	// 	    		 cli.Tree(uploadCommand),
-	// 	    		 cli.Tree(rmfileCommand)),
-	// 	    )
-
 	if err := app.RunWith(os.Args[1:], os.Stderr, nil); err != nil {
 		fmt.Printf("%v\n", err)
 	}

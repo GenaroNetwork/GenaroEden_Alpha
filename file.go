@@ -7,80 +7,21 @@ package main
 #include <uv.h>
 
 #cgo CFLAGS: -I.
-#cgo LDFLAGS: -L. /usr/local/lib/libstorj.dylib /usr/local/lib/libuv.dylib
+#cgo LDFLAGS: -L ./ -lstorj -luv
 
 #include "../libstorj/src/storj.h"
+#include "../libstorj/src/uploader.h"
+#include "callbacks.h"
 
-void check_store_file_progress(double progress,
-                               uint64_t uploaded_bytes,
-                               uint64_t total_bytes,
-                               void *handle)
-{
-    assert(handle == NULL);
-    if (progress == (double)1) {
-        printf("success");
-    }
-}
-
-void check_store_file(int error_code, char *file_id, void *handle)
-{
-    assert(handle == NULL);
-    if (error_code == 0) {
-        if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
-			printf("success");
-        } 
-    } else {
-        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
-    }
-
-    free(file_id);
-}
-
-
-void check_resolve_file_progress(double progress,
-                                 uint64_t downloaded_bytes,
-                                 uint64_t total_bytes,
-                                 void *handle)
-{
-    assert(handle == NULL);
-    if (progress == (double)1) {
-        printf("success");
-    }
-
-    // TODO check error case
-}
-
-void check_resolve_file(int status, FILE *fd, void *handle)
-{
-    fclose(fd);
-    assert(handle == NULL);
-    if (status) {
-        printf("Download failed: %s\n", storj_strerror(status));
-    } 
-}
-
-
-void check_delete_file(uv_work_t *work_req, int status)
-{
-    assert(status == 0);
-    json_request_t *req = work_req->data;
-    assert(req->handle == NULL);
-    assert(req->response == NULL);
-    assert(req->status_code == 200);
-
-    free(req->path);
-    free(req);
-    free(work_req);
-}
 */
 import "C"
 import "unsafe"
 import "fmt"
+import "errors"
 import (
 	"github.com/mkideal/cli"
 	// "github.com/stretchr/testify/assert"
 )
-
 
 type storj_bridge_options struct{
 	proto *C.char;
@@ -137,80 +78,39 @@ var _ =  fileCommand.Register(uploadCommand)
 var _ = fileCommand.Register(downloadCommand)
 var _ = fileCommand.Register(rmfileCommand)
 
-var uploadCommand = &cli.Command{
-	Name: "set",
-	Desc: "Genaro File upload",
-	Argv: func() interface{} { return new(uploadT) },	
-	Fn: genaro_upload,
-}
+func init_env(env_ptr **C.storj_env_t) error{
 
-// var _ = app.Register(uploadCommand)
-
-// var _ = app.Register(&cli.Command{
-// 	Name: "set",
-// 	Desc: "Genaro File upload",
-// 	Argv: func() interface{} { return new(uploadT) },	
-// 	Fn: genaro_upload,
-// })
-
-type uploadT struct {
-	cli.Helper
-	Host string `cli:"host" usage:"set host on Genaro network"`
-	User string `cli:"user,u" usage:"username on Genaro network"`
-	Password string `cli:"password,p" usage:"user password on Genaro network"`
-	File string `cli:"file" usage:"upload file"`	
-}
-
-
-func string_to_char(dst *C.char, src string) error {
-	src_b := []byte(src)
-	dst = (*C.char)(unsafe.Pointer(&src_b[0]))
-
-	return nil
-}
-
-func init_env(ctx *cli.Context, env *C.storj_env_t) error {
-	// argv := ctx.Argv().(*uploadT)
-
-	proto := "http"
-	host := "172.19.0.6"
-	user := "test@storj.io"
-	pass := "password"
-	mnemonic := "resemble scorpion weasel gift retreat pigeon piece liar shuffle mind best arctic slender quiz strong jeans misery wide tobacco pact firm wet success again"
-	user_agent := "libstorj-1.1.0-beta"
-
-	var proto_c *C.char
-	var host_c *C.char
-	var user_c *C.char
-	var pass_c *C.char
-
-	var mnemonic_c *C.char
-
-	var user_agent_c *C.char
+	var env *C.storj_env_t
 
 	Env := make(chan *C.storj_env_t) 
 
-	string_to_char(proto_c,proto)
-	string_to_char(host_c,host)
-	string_to_char(user_c,user)
-	string_to_char(pass_c,pass)
+	// proto := C.CString("http")
+	// host := C.CString("172.19.0.7")
+	// user := C.CString("test@storj.io")
+	// pass := C.CString("password")
+	// mnemonic := C.CString("resemble scorpion weasel gift retreat pigeon piece liar shuffle mind best arctic slender quiz strong jeans misery wide tobacco pact firm wet success again")
+	// user_agent := C.CString("libstorj-1.1.0-beta")
 
-	string_to_char(mnemonic_c,mnemonic)
 
-	string_to_char(user_agent_c,user_agent)
+	proto := C.CString("http")
+	host := C.CString("localhost")
+	user := C.CString("begoingto1@163.com")
+	pass := C.CString("ashes8871")
+	mnemonic := C.CString("negative brown polar admit eagle return valley host weather simple oak assume")
+	user_agent := C.CString("libstorj-1.1.0-beta")
 
 	options := storj_bridge_options{
-		proto: proto_c, 
-		host: host_c,
+		proto: proto, 
+		host: host,
 		port: C.int(8080),
-		user: user_c,
-		pass: pass_c}
+		user: user,
+		pass: pass}
 
 	encrypt_options := storj_encrypt_options{
-		mnemonic : mnemonic_c}
+		mnemonic : mnemonic}
 
 	http_options := storj_http_options{
-	    user_agent : user_agent_c,
+	    user_agent : user_agent,
 	    low_speed_limit : C.uint64_t(0),
 	    low_speed_time : C.uint64_t(0),
 	    timeout : C.uint64_t(0)}
@@ -218,67 +118,71 @@ func init_env(ctx *cli.Context, env *C.storj_env_t) error {
 	log_options := storj_log_options{
 		level : C.int(0)}
 
-
 	go func(){
 		
 		env = C.storj_init_env((*C.storj_bridge_options_t)(unsafe.Pointer(&options)),(*C.storj_encrypt_options_t)(unsafe.Pointer(&encrypt_options)),(*C.storj_http_options_t)(unsafe.Pointer(&http_options)),(*C.storj_log_options_t)(unsafe.Pointer(&log_options)))
-		
-		
-		defer C.free((unsafe.Pointer)(&env))
-
+	
 		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
 		
 		Env <- env
+	}()
 
-		}()
-	// env = C.storj_init_env((*C.storj_bridge_options_t)(unsafe.Pointer(&options)),(*C.storj_encrypt_options_t)(unsafe.Pointer(&encrypt_options)),(*C.storj_http_options_t)(unsafe.Pointer(&http_options)),(*C.storj_log_options_t)(unsafe.Pointer(&log_options)))
-
-	fmt.Printf("%v\n", <-Env)
+	*env_ptr = <- Env	
 
 	return nil
 }
 
+
+var uploadCommand = &cli.Command{
+	Name: "set",
+	Desc: "Genaro File upload",
+	Argv: func() interface{} { return new(uploadT) },	
+	Fn: genaro_upload,
+}
+
+
+type uploadT struct {
+	cli.Helper
+	Bucket string `cli:"id,i" usage:"bucket id to be loaded on Genaro network"`
+	Path string `cli:"path,p" usage:"upload file path on Genaro network"`	
+}
+
+
 func genaro_upload(ctx *cli.Context) error {
-	// env := make([](*C.storj_env_t),1)
+	argv := ctx.Argv().(*uploadT)
+
 	var env *C.storj_env_t
-	init_env(ctx,env)
+		
+	Sts := make(chan C.int)		
 
-	file := "test_upload"
-	file_name := "test_upload.data"
-	file_opt := "r"
-	var file_c *C.char
-	var file_opt_c *C.char
+	// if err := init_env(&env); err != nil{
+	// 	return errors.New("env is not set properly");
+	// }
 
-	string_to_char(file_c,file_name)
-	string_to_char(file_opt_c,file_opt)
-	var file_go *C.FILE
-	file_go = C.fopen(file_c,file_opt_c)
-	C.fclose(file_go);
+	if err := set_env(&env); err != nil{
+		return errors.New("Unlock passphrase is not correct")
+	}	
 
-	upload_opts := storj_upload_opts{
-		index : "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
-		bucket_id : "368be0816766b28fd5f43af5",
-		file_name : file,
-		fd : file_go,
-		rs : true}
+	fmt.Printf("%v\n",C.GoString(env.bridge_options.host))   
 
-	var state C.storj_upload_state_t
+	bucket_id := C.CString(argv.Bucket)
+	file_path := C.CString(argv.Path)
+
+	// file_path := C.CString("/Users/weilongwu/GenaroCore_Storj/genaro_cli/test_upload.data")
 
 	go func(){
 
-		status := C.storj_bridge_store_file(env,(*C.storj_upload_state_t)(unsafe.Pointer(&state)),(*C.storj_upload_opts_t)(unsafe.Pointer(&upload_opts)),nil,(C.storj_progress_cb)(unsafe.Pointer(C.check_store_file)),(C.storj_finished_upload_cb)(unsafe.Pointer(C.check_store_file_progress)))
 
-		panic(status)
+		status := C.upload_file(env, bucket_id, file_path);	
+
+	
+		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
+
+		Sts<-status	
+
 	}()
-	// assert.Equal(status,0)
-	// assert(status == 0);
 
-
-	if(C.int(C.uv_run(env.loop,C.UV_RUN_DEFAULT)) != 0){
-	return nil;
-	}
-
-	C.storj_destroy_env(env);
+	<-Sts
 
 	return nil;
 
@@ -289,64 +193,51 @@ func genaro_upload(ctx *cli.Context) error {
 var downloadCommand =&cli.Command{
 	Name: "get",
 	Desc: "Genaro File download",
-	Argv: func() interface{} { return new(dwnloadT) },	
+	Argv: func() interface{} { return new(downloadFileT) },	
 	Fn: genaro_download,
 }
 
-// var _ = app.Register(downloadCommand)
-
-// var _ = app.Register(&cli.Command{
-// 	Name: "get",
-// 	Desc: "Genaro File download",
-// 	Argv: func() interface{} { return new(dwnloadT) },	
-// 	Fn: genaro_download,
-// })
-
-type dwnloadT struct {
+type downloadFileT struct {
 	cli.Helper
-	Host string `cli:"host" usage:"set host on Genaro network"`
-	User string `cli:"user,u" usage:"username on Genaro network"`
-	Password string `cli:"password,p" usage:"user password on Genaro network"`
-	File string `cli:"file" usage:"download file"`	
+	BucketId string `cli:"b" usage:"BucketId from your download file on Genaro network"`
+	FileId string `cli:"f" usage:"download FileId on Genaro network"`
+	Path string `cli:"p" usage:"download path to your computer"`
 }
 
 func genaro_download(ctx *cli.Context) error {
-	// env := make([](*C.storj_env_t),1)
+
+	argv := ctx.Argv().(*downloadFileT)
+
 	var env *C.storj_env_t
-	init_env(ctx,env)
+		
+	// if err := init_env(&env); err != nil{
+	// 	return errors.New("env is not set properly");
+	// }
 
-	file_name := "test_download.data"
-	file_opt := "w+"
-	bucket_id := "368be0816766b28fd5f43af5"
-	file_id	:= "998960317b6725a3f8080c2b"
+	if err := set_env(&env); err != nil{
+		return errors.New("Unlock passphrase is not correct")
+	}		
 
-	var file_c *C.char
-	var file_opt_c *C.char
-	var bucket_id_c *C.char
-	var file_id_c *C.char
+	Sts := make(chan C.int)
+	
 
-	string_to_char(file_c, file_name)
-	string_to_char(file_opt_c, file_opt)
-	string_to_char(bucket_id_c, bucket_id)
-	string_to_char(file_id_c, file_id)
+	bucket_id := C.CString(argv.BucketId)
+	file_id := C.CString(argv.FileId)
+	path := C.CString(argv.Path)
 
-	var download_file *C.FILE
-	download_file = C.fopen(file_c,file_opt_c)
-	C.fclose(download_file)
-	var handle int
+	go func(){
 
-	var state C.storj_download_state_t
-	// problem here the download file should be *FILE but in here it needs void* 
-	status := C.storj_bridge_resolve_file(env,(*C.storj_download_state_t)(unsafe.Pointer(&state)),bucket_id_c,file_id_c,download_file,unsafe.Pointer(&handle),(C.storj_progress_cb)(unsafe.Pointer(C.check_resolve_file)),(C.storj_finished_download_cb)(unsafe.Pointer(C.check_resolve_file_progress)))
+		status := C.download_file(env, bucket_id, file_id, path)
+	
+		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
 
-	panic(status)
-	// assert(status == 0);
+		Sts<-status	
 
-	if(C.int(C.uv_run(env.loop,C.UV_RUN_DEFAULT)) != 0){
-		return nil;
-	}
+		fmt.Printf("%v\n",status)	
 
-	C.storj_destroy_env(env);
+	}()	
+
+	<-Sts
 
 	return nil;
 
@@ -361,45 +252,45 @@ var rmfileCommand = &cli.Command{
 	Fn: genaro_removefile,
 }
 
-
-// var _ = app.Register(rmfileCommand)
-
-// var _ = app.Register(&cli.Command{
-// 	Name: "rm",
-// 	Desc: "Genaro File remove",
-// 	Argv: func() interface{} { return new(genaro_removeT) },	
-// 	Fn: genaro_remove,
-// })
-
 type genaro_removeT struct {
 	cli.Helper
-	File string `cli:"file" usage:"remove file from Genaro network"`
+	FileId string `cli:"f" usage:"remove file from Genaro network"`
+	BucketId string `cli:"b" usage:"remove file from Genaro network"`	
 }
 
 func genaro_removefile(ctx *cli.Context) error {
-	var env *C.storj_env_t
-	init_env(ctx,env)
 
-	bucket_id := "368be0816766b28fd5f43af5"
-	file_id	:= "998960317b6725a3f8080c2b"
+	argv := ctx.Argv().(*genaro_removeT)
 
-	var bucket_id_c *C.char
-	var file_id_c *C.char
-	string_to_char(bucket_id_c, bucket_id)
-	string_to_char(file_id_c, file_id)
-
-	var handle int
-
-	status := C.storj_bridge_delete_file(env, bucket_id_c, file_id_c, unsafe.Pointer(&handle),(C.uv_after_work_cb)(unsafe.Pointer(C.check_delete_file)))
+	Sts := make(chan C.int)
 	
-	panic(status)
-	// assert(status == 0);
+	var env *C.storj_env_t
+		
+	// if err := init_env(&env); err != nil{
+	// 	return errors.New("env is not set properly");
+	// }
 
-	if(C.int(C.uv_run(env.loop,C.UV_RUN_DEFAULT)) != 0){
-		return nil;
-	}
+	if err := set_env(&env); err != nil{
+		return errors.New("Unlock passphrase is not correct")
+	}	
 
-	C.storj_destroy_env(env);
+	bucket_id := C.CString(argv.BucketId)
+	file_id := C.CString(argv.FileId)
+
+
+	go func(){
+
+		status := C.storj_bridge_delete_file(env, bucket_id, file_id, nil,(C.uv_after_work_cb)(unsafe.Pointer(C.delete_file_callback)))
+		// defer C.fclose(file_go)
+	
+		C.uv_run(env.loop, C.UV_RUN_DEFAULT)
+
+		Sts<-status	
+
+	}()
+
+	<-Sts
+
 
 	return nil;
 

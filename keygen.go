@@ -36,9 +36,6 @@ type keygenT struct {
 
 func keygen(ctx *cli.Context) error {
 
-	var env *C.storj_env_t
-	init_env(ctx,env)
-
 	buf := make([]string, 16)
 	// argv := ctx.Argv().(*keygenT)
 
@@ -64,9 +61,9 @@ func keygen(ctx *cli.Context) error {
 
 	ctx.String("%s: %s \n", ctx.Path(), buf)
 
-	if env !=nil {
-		C.storj_destroy_env(env);
-	}
+	// if env !=nil {
+	// 	C.storj_destroy_env(env);
+	// }
 
 	return nil
 }
