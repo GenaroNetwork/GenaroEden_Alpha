@@ -7,9 +7,9 @@ package main
 #include <uv.h>
 
 #cgo CFLAGS: -I.
-#cgo LDFLAGS: -L. /usr/local/lib/libstorj.dylib /usr/local/lib/libuv.dylib
+#cgo LDFLAGS: -L ./ -lstorj -luv
 
-#include "../libstorj/src/storj.h"
+#include "storj.h"
 #include "callbacks.h"
 */
 import "C"

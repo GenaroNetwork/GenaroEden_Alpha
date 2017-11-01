@@ -8,9 +8,8 @@ package main
 #include "callbacks.h"
 
 #cgo CFLAGS: -I.
-#cgo LDFLAGS: -L. /usr/local/lib/libstorj.dylib /usr/local/lib/libuv.dylib /usr/local/lib/libjson-c.dylib
-
-#include "../libstorj/src/storj.h"
+#cgo LDFLAGS: -L ./ -lstorj -luv -ljson-c
+#include "storj.h"
 
 extern void create_bucket(uv_work_t *work_req, int status);
 extern void delete_bucket(uv_work_t *work_req, int status); 
@@ -60,13 +59,6 @@ var addCommand = &cli.Command{
 	Argv: func() interface{} { return new(addbucketT) },
 	Fn: addbucket,
 }
-
-// var _ = app.Register(&cli.Command{
-// 	Name: "addbucket",
-// 	Desc: "Genaro Bucket Adding",
-// 	Argv: func() interface{} { return new(addbucketT) },
-// 	Fn: addbucket,
-// })
 
 type addbucketT struct {
 	cli.Helper
@@ -174,13 +166,6 @@ var listbucketCommand =&cli.Command{
 	Argv: func() interface{} { return new(listbucketsT) },	
 	Fn: listbuckets,
 }
-
-// var _ = app.Register(&cli.Command{
-// 	Name: "listbuckets",
-// 	Desc: "Genaro Buskets Listing",
-// 	Argv: func() interface{} { return new(listbucketsT) },	
-// 	Fn: listbuckets,
-// })
 
 type listbucketsT struct {
 	cli.Helper

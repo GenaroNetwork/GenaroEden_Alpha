@@ -10,9 +10,9 @@ import (
 #include <assert.h>
 
 #cgo CFLAGS: -I.
-#cgo LDFLAGS: -L. /usr/local/lib/libstorj.dylib
+#cgo LDFLAGS: -L ./ -lstorj
 
-#include "../libstorj/src/storj.h"
+#include "storj.h"
 
 */
 import "C"

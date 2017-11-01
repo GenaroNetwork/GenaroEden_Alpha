@@ -9,8 +9,7 @@ package main
 #cgo CFLAGS: -I.
 #cgo LDFLAGS: -L ./ -lstorj -luv
 
-#include "../libstorj/src/storj.h"
-#include "../libstorj/src/uploader.h"
+#include "storj.h"
 #include "callbacks.h"
 
 */
@@ -20,7 +19,6 @@ import "fmt"
 import "errors"
 import (
 	"github.com/mkideal/cli"
-	// "github.com/stretchr/testify/assert"
 )
 
 type storj_bridge_options struct{

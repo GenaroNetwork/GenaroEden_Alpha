@@ -18,12 +18,6 @@ var app = &cli.Command{
 	Fn:   gogo,
 }
 
-
-// 
-// 设置全局变量，使用指针调用，用于initenv
-//
-
-
 type gogoT struct {
 	cli.Helper
 	Version bool `cli:"v,version" usage:"display version"`
