@@ -15,7 +15,6 @@ package main
 import "C"
 import "unsafe"
 import "errors"
-import "fmt"
 import (
 	"github.com/mkideal/cli"
 )
@@ -45,7 +44,6 @@ func info(ctx *cli.Context) error {
 	}
 
 
-	fmt.Printf("%v\n",C.GoString(env.bridge_options.host))
 	// User := os.Getenv("STORJ_BRIDGE_USER")
 	// Pass := os.Getenv("STORJ_BRIDGE_PASS")	
 	// Key := os.Getenv("STORJ_ENCRYPTION_KEY")

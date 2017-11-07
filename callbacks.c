@@ -193,7 +193,7 @@ void get_info_callback(uv_work_t *work_req, int status)
     json_object_object_get_ex(req->response, "host", &host);
 
 
-    printf("Title:  Genaro X %s\n", json_object_get_string(title));
+    printf("Title:  %s\n", json_object_get_string(title));
     printf("Description: %s\n", json_object_get_string(description));
     printf("Version:     %s\n", json_object_get_string(version));
     printf("Host:        %s\n", json_object_get_string(host));
@@ -797,14 +797,17 @@ int get_user_auth_location(char *host, char **root_dir, char **user_file)
         return 1;
     }
 
-    int len = strlen(home_dir) + strlen("/.genaro/");
+    // int len = strlen(home_dir) + strlen("/.genaro/");
+    int len = strlen(home_dir) + strlen("/.genaro/");    
     *root_dir = calloc(len + 1, sizeof(char));
     if (!*root_dir) {
         return 1;
     }
 
     strcpy(*root_dir, home_dir);
+
     strcat(*root_dir, "/.genaro/");
+    // strcat(*root_dir, "/.genaro/");    
 
     len = strlen(*root_dir) + strlen(host) + strlen(".json");
     *user_file = calloc(len + 1, sizeof(char));

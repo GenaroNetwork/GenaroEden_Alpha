@@ -186,6 +186,11 @@ func listbuckets(ctx *cli.Context) error{
 		return errors.New("Unlock passphrase is not correct")
 	}	
 
+
+		fmt.Printf("%v\n",C.GoString(env.bridge_options.user))
+		fmt.Printf("%v\n",C.GoString(env.bridge_options.pass))	
+			
+
 	go func(){
 		status := C.storj_bridge_get_buckets(env, nil, (C.uv_after_work_cb)(unsafe.Pointer(C.get_buckets_callback)))		
 
