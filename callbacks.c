@@ -842,8 +842,6 @@ static int make_user_directory(char *path)
     }
     return 0;
 }
-
-
 // export _keys 
 //
 //
