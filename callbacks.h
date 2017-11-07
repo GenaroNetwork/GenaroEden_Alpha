@@ -40,7 +40,8 @@ void delete_file_callback(uv_work_t *work_req, int status);
 void list_files_callback(uv_work_t *work_req, int status);
 void get_buckets_callback(uv_work_t *work_req, int status);
 
-static int import_keys(user_options_t *options);
+int import_keys(user_options_t *options);
+int export_keys(char *host);
 void register_callback(uv_work_t *work_req, int status);
 static int generate_mnemonic(char **mnemonic);
 int get_user_auth_location(char *host, char **root_dir, char **user_file);

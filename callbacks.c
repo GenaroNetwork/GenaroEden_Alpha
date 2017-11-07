@@ -526,10 +526,13 @@ void delete_file_callback(uv_work_t *work_req, int status)
 // register 
 //================================================================================
 
-static int import_keys(user_options_t *options)
+int import_keys(user_options_t *options)
 {
     int status = 0;
-    char *host = options->host ? strdup(options->host) : NULL;
+    // char *host = options->host ? strdup(options->host) : NULL;
+    char *host = malloc(64 * sizeof(char));
+    strcpy(host, "genaro_eden_alpha");
+    // char *host = "genaro_eden_alpha";
     char *user = options->user ? strdup(options->user) : NULL;
     char *pass = options->pass ? strdup(options->pass) : NULL;
     char *key = options->key ? strdup(options->key) : NULL;
@@ -794,14 +797,14 @@ int get_user_auth_location(char *host, char **root_dir, char **user_file)
         return 1;
     }
 
-    int len = strlen(home_dir) + strlen("/.storj/");
+    int len = strlen(home_dir) + strlen("/.genaro/");
     *root_dir = calloc(len + 1, sizeof(char));
     if (!*root_dir) {
         return 1;
     }
 
     strcpy(*root_dir, home_dir);
-    strcat(*root_dir, "/.storj/");
+    strcat(*root_dir, "/.genaro/");
 
     len = strlen(*root_dir) + strlen(host) + strlen(".json");
     *user_file = calloc(len + 1, sizeof(char));
@@ -840,6 +843,63 @@ static int make_user_directory(char *path)
     return 0;
 }
 
+
+// export _keys 
+//
+//
+int export_keys(char *host)
+{
+    int status = 0;
+    char *user_file = NULL;
+    char *root_dir = NULL;
+    char *user = NULL;
+    char *pass = NULL;
+    char *mnemonic = NULL;
+    char *key = NULL;
+
+    if (get_user_auth_location(host, &root_dir, &user_file)) {
+        printf("Unable to determine user auth filepath.\n");
+        status = 1;
+        goto clear_variables;
+    }
+
+    if (access(user_file, F_OK) != -1) {
+        key = calloc(BUFSIZ, sizeof(char));
+        printf("Unlock passphrase: ");
+        get_password(key, '*');
+        printf("\n\n");
+
+        if (storj_decrypt_read_auth(user_file, key, &user, &pass, &mnemonic)) {
+            printf("Unable to read user file.\n");
+            status = 1;
+            goto clear_variables;
+        }
+
+        printf("Username:\t%s\nPassword:\t%s\nEncryption key:\t%s\n",
+               user, pass, mnemonic);
+    }
+
+clear_variables:
+    if (user) {
+        free(user);
+    }
+    if (pass) {
+        free(pass);
+    }
+    if (mnemonic) {
+        free(mnemonic);
+    }
+    if (root_dir) {
+        free(root_dir);
+    }
+    if (user_file) {
+        free(user_file);
+    }
+    if (key) {
+        free(key);
+    }
+    return status;
+}
 
 //
 //
